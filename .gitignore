@@ -1,0 +1,13 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# meld
+*.orig
+
+# Distribution / packaging
+build/
+
+# backup files
+*.bak
+
