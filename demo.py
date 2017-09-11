@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import wx
 from innocom.innocom import InnoCom
-from innomplot.innomplot import InnoMplot
+from innompl.innompl import InnoMpl
 
 if __name__=="__main__":
 
@@ -15,8 +15,8 @@ if __name__=="__main__":
             # panel page
             self.pnlTerm = InnoCom(self.nbkMain)
             self.nbkMain.AddPage(self.pnlTerm, "innocom")
-            self.pnlGrp = InnoMplot(self.nbkMain)
-            self.nbkMain.AddPage(self.pnlGrp, "innomplot")
+            self.pnlGrp = InnoMpl(self.nbkMain)
+            self.nbkMain.AddPage(self.pnlGrp, "innompl")
 
             # menu events
             self.Bind(wx.EVT_CLOSE, self.OnClose)

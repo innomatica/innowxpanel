@@ -24,7 +24,7 @@ from matplotlib.figure import Figure
 
 import wx
 
-class InnoMplot(wx.Panel):
+class InnoMpl(wx.Panel):
 
     def __init__(self, parent, hideToolbar=False):
 
@@ -99,7 +99,7 @@ if __name__=="__main__":
             self.SetMenuBar(menubar)
 
             # panel
-            self.pnlPlot = InnoMplot(self)
+            self.pnlPlot = InnoMpl(self)
 
             # event binding
             self.Bind(wx.EVT_MENU, self.OnDrawGraph, mitemLine)
@@ -204,13 +204,13 @@ if __name__=="__main__":
 
         def OnClose(self, evt):
             # explicitly destroy the panel
-            self.pnlPlot.Close()
+            #self.pnlPlot.Close()
             # destroy self
             self.Destroy()
 
 
 
     app = wx.App()
-    frame = MyFrame(None, "innocom demo")
+    frame = MyFrame(None, "innompl demo")
 
     app.MainLoop()
