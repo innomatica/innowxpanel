@@ -2,6 +2,7 @@
 import wx
 from innocom.innocom import InnoCom
 from innompl.innompl import InnoMpl
+from innowpl.innowpl import InnoWpl
 
 if __name__=="__main__":
 
@@ -15,8 +16,10 @@ if __name__=="__main__":
             # panel page
             self.pnlTerm = InnoCom(self.nbkMain)
             self.nbkMain.AddPage(self.pnlTerm, "innocom")
-            self.pnlGrp = InnoMpl(self.nbkMain)
-            self.nbkMain.AddPage(self.pnlGrp, "innompl")
+            self.pnlMGrp = InnoMpl(self.nbkMain)
+            self.nbkMain.AddPage(self.pnlMGrp, "innompl")
+            self.pnlWGrp = InnoWpl(self.nbkMain)
+            self.nbkMain.AddPage(self.pnlWGrp, "innowpl")
 
             # menu events
             self.Bind(wx.EVT_CLOSE, self.OnClose)
