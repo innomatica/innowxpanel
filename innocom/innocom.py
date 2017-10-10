@@ -93,8 +93,8 @@ class ComThread:
 #
 class InnoCom(wx.Panel):
 
-    def __init__(self, *args, hideControls = False, **kwags):
-        wx.Panel.__init__(self, *args, **kwags)
+    def __init__(self, *args, hideControls = False, **kwgs):
+        wx.Panel.__init__(self, *args, **kwgs)
 
         # terminal
         self.txtTerm = wx.TextCtrl(self, wx.ID_ANY, "", size=(500,350),
@@ -462,6 +462,6 @@ if __name__=="__main__":
             self.Destroy()
 
     app = wx.App()
-    frame = MyFrame(None, "innocom demo")
+    frame = MyFrame(None, "serial terminal demo")
 
     app.MainLoop()
