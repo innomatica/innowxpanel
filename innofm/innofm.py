@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import subprocess
 import wx
@@ -36,7 +38,74 @@ peiFView = PyEmbeddedImage(
     b'WHRkYXRlOm1vZGlmeQAyMDE3LTEwLTA5VDAzOjM0OjA1KzAyOjAwAxOhMgAAABl0RVh0U29m'
     b'dHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAAASUVORK5CYII=')
 
-wv_files = ['c','cpp','h','py','txt','png','jpg']
+peiBMark = PyEmbeddedImage(
+    b'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAQAAABKfvVzAAAABGdBTUEAALGPC/xhBQAAACBj'
+    b'SFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAAmJLR0QAAKqNIzIA'
+    b'AAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfhCgwEHR2KyW2HAAABhklEQVQ4y43TMUtb'
+    b'YRSH8d+1iogWBCuIUoSSRALtJ/ADCG5SOhQc3ZwFv0BXZxcXQRRKXTI5CQ6COKg0kdqQbkIk'
+    b'AYe4SCOnQ5M0prdNzju9//M891wOvIm0GvEeX/w0YG0LYXtQPO/JnTtP8oMJe8KGDWFvEDyn'
+    b'qWbcuJqmXH9hV9gEm8JuPzyjqW4CTKhryjwHhvHKO1lZOVlvvLDlATzY8knRD2XflZV9VWfd'
+    b'o+icqv3W93/P2Fft6j5aT1RN2/dNWVlZI+U3X8rKysj7qMaxcGC47zKGHQjHzKsIh0b+i484'
+    b'FCrmYc6NUDD6T3xUQbgx1w5mlIQjY6n4mCOhZKY7nHYp7KQKO8Kl6d54QThNFU6FhfZlqBO/'
+    b'xnWqcN3q9ghvUUoVSq1ua7vdQrGzxA/43HpxxW7hT50JsxiyqiKEilVDmBXOevFEw73EiqIQ'
+    b'CgpCKFqRuNeQPBcmhVvnQjixCBadCOHcrTDZO+FKCBeWn+XLLoRw1TuBKWuW/o4llqyZal9/'
+    b'AcS7i3NaIjAhAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDE3LTEwLTEyVDA0OjI5OjI5KzAyOjAw'
+    b'Y7XGUQAAACV0RVh0ZGF0ZTptb2RpZnkAMjAxNy0xMC0xMlQwNDoyOToyOSswMjowMBLofu0A'
+    b'AAAZdEVYdFNvZnR3YXJlAHd3dy5pbmtzY2FwZS5vcmeb7jwaAAAAAElFTkSuQmCC')
+
+
+wview_flist = ['c','cpp','h','py','txt','png','jpg']
+
+
+class BookMark(wx.ComboBox):
+
+    def __init__(self, *args, **kwgs):
+        wx.ComboBox.__init__(self, *args, **kwgs)
+        # TODO: rename it as bmlist
+        self.bmlist = []
+
+
+    def AddBookmark(self, bmark):
+        if type(bmark) is tuple and len(bmark) == 2:
+            self.bmlist.append(bmark)
+            # refresh the list
+            self.RefreshList()
+
+
+    def DeleteBookmark(self, alias):
+        for index,item in enumerate(self.bmlist):
+            if item[0] == alias:
+                self.bmlist.pop(index)
+
+        # refresh the list
+        self.RefreshList()
+
+    def GetAddress(self, alias):
+        for item in self.bmlist:
+            if item[0] == alias:
+                return item[1]
+
+        return None
+
+    def IsBookmark(self, alias):
+        for item in self.bmlist:
+            if item[0] == alias:
+                return True
+
+        return False
+
+
+    def RefreshList(self):
+        # save the editbox
+        edit = self.GetValue()
+        # clear entire data
+        self.Clear()
+        # repopulate the list
+        for item in self.bmlist:
+            self.Append(item[0])
+        # retrieve the editbox
+        self.SetValue(edit)
+
 
 class InnoFileMgr(wx.Panel):
 
@@ -64,6 +133,7 @@ class InnoFileMgr(wx.Panel):
         bmpFTree = peiFTree.GetBitmap()
         bmpFList = peiFList.GetBitmap()
         bmpFView = peiFView.GetBitmap()
+        bmpBMark = peiBMark.GetBitmap()
         #
         self.btnFTree = wx.BitmapToggleButton(self, -1, bmpFTree,
                 (20,20), (bmpFTree.GetWidth()+14, bmpFTree.GetHeight()+14))
@@ -71,6 +141,8 @@ class InnoFileMgr(wx.Panel):
                 (20,20), (bmpFList.GetWidth()+14, bmpFList.GetHeight()+14))
         self.btnFView = wx.BitmapToggleButton(self, -1, bmpFView,
                 (20,20), (bmpFView.GetWidth()+14, bmpFView.GetHeight()+14))
+        self.btnBMark = wx.BitmapButton(self, -1, bmpBMark,
+                (20,20), (bmpBMark.GetWidth()+14, bmpBMark.GetHeight()+14))
         #
         self.pages = [
                 {'name':'Tree', 'page':self.ftree, 'button':self.btnFTree},
@@ -84,17 +156,15 @@ class InnoFileMgr(wx.Panel):
 
 
         # address bar
-        self.cboAddr = wx.ComboBox(self, -1,
-                choices=[
-                    '>> Add to Favorite <<',
-                    '>> Go to Parent <<',
-                    '>> Select Directory <<'], style = wx.TE_PROCESS_ENTER)
+        self.bookmark = BookMark(self, -1, choices=[],
+                style = wx.TE_PROCESS_ENTER)
                 
         sizer_h = wx.BoxSizer(wx.HORIZONTAL)
         sizer_h.Add(self.btnFTree, 0, wx.ALL, 2)
         sizer_h.Add(self.btnFList, 0, wx.ALL, 2)
         sizer_h.Add(self.btnFView, 0, wx.ALL, 2)
-        sizer_h.Add(self.cboAddr, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+        sizer_h.Add(self.bookmark, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
+        sizer_h.Add(self.btnBMark, 0, wx.ALL, 2)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.book, 1, wx.ALL|wx.EXPAND, 4)
@@ -120,10 +190,12 @@ class InnoFileMgr(wx.Panel):
         self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFTree)
         self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFList)
         self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFView)
+        # event from BUTTON
+        self.Bind(wx.EVT_BUTTON, self.OnBookMark, self.btnBMark)
 
         # event from COMBOBOX
-        self.Bind(wx.EVT_COMBOBOX, self.OnAddressSelect, self.cboAddr)
-        self.Bind(wx.EVT_TEXT_ENTER, self.OnAddressEnter, self.cboAddr)
+        self.Bind(wx.EVT_COMBOBOX, self.OnAddressSelect, self.bookmark)
+        self.Bind(wx.EVT_TEXT_ENTER, self.OnAddressEnter, self.bookmark)
 
         # set initial page
         self.btnFTree.SetValue(1)
@@ -155,28 +227,55 @@ class InnoFileMgr(wx.Panel):
     def OnDirSelChanged(self, evt):
         self.SetCurrentPath(self.ftree.GetPath())
 
+    def OnBookMark(self, evt):
+        bmdir = self.bookmark.GetValue()
+
+        # empty entry?
+        if bmdir == '':
+            return
+
+        if os.name == 'nt':
+            delimiter = '\\'
+        else:
+            delimiter = '/'
+
+        if self.bookmark.IsBookmark(bmdir):
+            # remove
+            dlg = wx.MessageDialog(self, 'Remove bookmark?',
+                    style = wx.YES_NO|wx.ICON_EXCLAMATION)
+            if dlg.ShowModal() == wx.ID_YES:
+                self.bookmark.DeleteBookmark(bmdir)
+        else:
+            # add
+            dlg = wx.TextEntryDialog(self, bmdir, 'Add bookmark',
+                    bmdir[bmdir.rfind(delimiter)+1:])
+            if dlg.ShowModal() == wx.ID_OK:
+                self.bookmark.AddBookmark((dlg.GetValue(),bmdir))
+
+
+
     def OnAddressSelect(self, evt):
-        sel = self.cboAddr.GetValue()
-        if 'Add to' in sel:
-            pass
-        elif 'Go to' in sel:
-            pass
-        elif 'Select' in sel:
-            pass
+        alias = self.bookmark.GetValue()
+        address = self.bookmark.GetAddress(alias)
+
+        if self.GetCurrentPage() == 'Tree':
+            self.ftree.ExpandPath(address)
+        elif self.GetCurrentPage() == 'List':
+            self.flist.LoadURL(address)
         
 
 
     def OnAddressEnter(self, evt):
-        if self.cboAddr.GetValue() == '':
+        if self.bookmark.GetValue() == '':
             return
 
         if self.GetCurrentPage() == 'List':
-            self.flist.LoadURL(self.cboAddr.GetValue())
+            self.flist.LoadURL(self.bookmark.GetValue())
 
 
     def SetCurrentPath(self, path):
         # write current path on the address bar
-        self.cboAddr.SetValue(path)
+        self.bookmark.SetValue(path)
 
         # set current file and current directory
         if os.path.isfile(path):
@@ -212,7 +311,7 @@ class InnoFileMgr(wx.Panel):
 
     def IsViewable(self, fpath):
         ext = fpath[fpath.rfind('.')+1:]
-        if ext in wv_files:
+        if ext in wview_flist:
             return True
         else:
             return False

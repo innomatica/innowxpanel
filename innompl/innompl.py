@@ -1,10 +1,8 @@
 """
-================
-Embedding In Wx2
-================
-
-An example of how to use wx or wxagg in an application with the new
-toolbar - comment out the setA_toolbar line for no toolbar
+matplotlib/backends/wx_compat.py has a bug that breaks when NavigationToolbar2Wx
+is called by wxpython-pheonix. To fix this both 'shortHelpString' and
+'longHelpString' in parent.AddTool() line 148 should be replaced by 'shortHelp'
+and 'longHelp' respectively.
 """
 
 # Matplotlib requires wxPython 2.8+
