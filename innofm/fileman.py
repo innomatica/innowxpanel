@@ -5,6 +5,7 @@ import subprocess
 import wx
 import wx.html2 as html2
 
+from prioritycombo import PriorityCombo
 from wx.lib.embeddedimage import PyEmbeddedImage
 
 peiFTree = PyEmbeddedImage(
@@ -57,56 +58,6 @@ peiBMark = PyEmbeddedImage(
 wview_flist = ['c','cpp','h','py','txt','png','jpg']
 
 
-class BookMark(wx.ComboBox):
-
-    def __init__(self, *args, **kwgs):
-        wx.ComboBox.__init__(self, *args, **kwgs)
-        # TODO: rename it as bmlist
-        self.bmlist = []
-
-
-    def AddBookmark(self, bmark):
-        if type(bmark) is tuple and len(bmark) == 2:
-            self.bmlist.append(bmark)
-            # refresh the list
-            self.RefreshList()
-
-
-    def DeleteBookmark(self, alias):
-        for index,item in enumerate(self.bmlist):
-            if item[0] == alias:
-                self.bmlist.pop(index)
-
-        # refresh the list
-        self.RefreshList()
-
-    def GetAddress(self, alias):
-        for item in self.bmlist:
-            if item[0] == alias:
-                return item[1]
-
-        return None
-
-    def IsBookmark(self, alias):
-        for item in self.bmlist:
-            if item[0] == alias:
-                return True
-
-        return False
-
-
-    def RefreshList(self):
-        # save the editbox
-        edit = self.GetValue()
-        # clear entire data
-        self.Clear()
-        # repopulate the list
-        for item in self.bmlist:
-            self.Append(item[0])
-        # retrieve the editbox
-        self.SetValue(edit)
-
-
 
 class InnoFileMgr(wx.Panel):
 
@@ -120,12 +71,14 @@ class InnoFileMgr(wx.Panel):
         # book control
         self.book = wx.Simplebook(self)
 
-        # directory control
-        self.ftree = wx.GenericDirCtrl(self.book,
-                style=wx.DIRCTRL_EDIT_LABELS|wx.DIRCTRL_DIR_ONLY)
+        # directory control without files
+        self.dirctrl1 = wx.GenericDirCtrl(self.book, style=wx.DIRCTRL_DIR_ONLY)
+
+        # directory control with files
+        self.dirctrl2 = wx.GenericDirCtrl(self.book)
 
         # webview: flie list mode
-        self.flist = html2.WebView.New(self.book)
+        self.webview = html2.WebView.New(self.book)
 
         # webview: flie view mode
         # TODO: this will be replaced by proper viewer
@@ -139,48 +92,21 @@ class InnoFileMgr(wx.Panel):
         # wx.lib.pydocview
         # textviewer
         # texteditor
-        self.fview = html2.WebView.New(self.book)
+        self.viewer = html2.WebView.New(self.book)
 
-        # button bitmaps
-        bmpFTree = peiFTree.GetBitmap()
-        bmpFList = peiFList.GetBitmap()
-        bmpFView = peiFView.GetBitmap()
-        bmpBMark = peiBMark.GetBitmap()
-        #
-        self.btnFTree = wx.BitmapToggleButton(self, -1, bmpFTree,
-                (20,20), (bmpFTree.GetWidth()+14, bmpFTree.GetHeight()+14))
-        self.btnFList = wx.BitmapToggleButton(self, -1, bmpFList,
-                (20,20), (bmpFList.GetWidth()+14, bmpFList.GetHeight()+14))
-        self.btnFView = wx.BitmapToggleButton(self, -1, bmpFView,
-                (20,20), (bmpFView.GetWidth()+14, bmpFView.GetHeight()+14))
-        self.btnBMark = wx.BitmapButton(self, -1, bmpBMark,
-                (20,20), (bmpBMark.GetWidth()+14, bmpBMark.GetHeight()+14))
-        #
         self.pages = [
-                {'name':'Tree', 'page':self.ftree, 'button':self.btnFTree},
-                {'name':'List', 'page':self.flist, 'button':self.btnFList},
-                {'name':'View', 'page':self.fview, 'button':self.btnFView}]
+                {'name':'Dir1', 'page':self.dirctrl1},
+                {'name':'Dir2', 'page':self.dirctrl2},
+                {'name':'List', 'page':self.webview},
+                {'name':'View', 'page':self.viewer}]
 
         # add pages to the book
         for idx, item in enumerate(self.pages):
             self.book.AddPage(item['page'], '')
             item['page no'] = idx
 
-
-        # address bar
-        self.bookmark = BookMark(self, -1, choices=[],
-                style = wx.TE_PROCESS_ENTER)
-                
-        sizer_h = wx.BoxSizer(wx.HORIZONTAL)
-        sizer_h.Add(self.btnFTree, 0, wx.ALL, 2)
-        sizer_h.Add(self.btnFList, 0, wx.ALL, 2)
-        sizer_h.Add(self.btnFView, 0, wx.ALL, 2)
-        sizer_h.Add(self.bookmark, 1, wx.ALL|wx.ALIGN_CENTER_VERTICAL, 2)
-        sizer_h.Add(self.btnBMark, 0, wx.ALL, 2)
-
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.book, 1, wx.ALL|wx.EXPAND, 4)
-        sizer.Add(sizer_h, 0, wx.ALL|wx.EXPAND, 0)
 
         self.SetSizer(sizer)
         self.SetAutoLayout(True)
@@ -188,30 +114,17 @@ class InnoFileMgr(wx.Panel):
 
         # event from DIRCTRL
         self.Bind(wx.EVT_DIRCTRL_SELECTIONCHANGED, self.OnDirSelChanged,
-                self.ftree)
+                self.dirctrl1)
         self.Bind(wx.EVT_DIRCTRL_FILEACTIVATED, self.OnFileActivated,
-                self.ftree)
-
+                self.dirctrl2)
         # event from WEBVIEW
         self.Bind(wx.html2.EVT_WEBVIEW_NAVIGATED, self.OnWebNavigated,
-                self.flist)
+                self.webview)
         self.Bind(wx.html2.EVT_WEBVIEW_LOADED, self.OnWebLoaded,
-                self.flist)
-
-        # event from TOGGLEBUTTON
-        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFTree)
-        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFList)
-        self.Bind(wx.EVT_TOGGLEBUTTON, self.OnPageChange, self.btnFView)
-        # event from BUTTON
-        self.Bind(wx.EVT_BUTTON, self.OnBookMark, self.btnBMark)
-
-        # event from COMBOBOX
-        self.Bind(wx.EVT_COMBOBOX, self.OnAddressSelect, self.bookmark)
-        self.Bind(wx.EVT_TEXT_ENTER, self.OnAddressEnter, self.bookmark)
+                self.webview)
 
         # set initial page
-        self.btnFTree.SetValue(1)
-        self.SetCurrentPage('Tree')
+        self.SetCurrentPage('Dir1')
 
 
     def OnWebNavigated(self, evt):
@@ -222,77 +135,24 @@ class InnoFileMgr(wx.Panel):
         # do nothing for now
         pass
     
-    def OnPageChange(self, evt):
-        # which button?
-        for item in self.pages:
-            if item['button'] == evt.GetEventObject():
-                item['button'].SetValue(1)
-                self.SetCurrentPage(item['name'])
-            else:
-                item['button'].SetValue(0)
 
     def TogglePage(self):
-        if self.GetCurrentPage() != 'Tree':
-            self.SetCurrentPage('Tree')
-        else:
+        if self.GetCurrentPage() == 'Dir1':
             self.SetCurrentPage('List')
+        elif self.GetCurrentPage() == 'List':
+            self.SetCurrentPage('Dir1')
+
 
     def OnFileActivated(self, evt):
         # double click in the directory mode
-        self.Run(self.ftree.GetPath())
+        self.Run(self.dirctrl2.GetPath())
+
 
     def OnDirSelChanged(self, evt):
-        self.SetCurrentPath(self.ftree.GetPath())
-
-    def OnBookMark(self, evt):
-        bmdir = self.bookmark.GetValue()
-
-        # empty entry?
-        if bmdir == '':
-            return
-
-        if os.name == 'nt':
-            delimiter = '\\'
-        else:
-            delimiter = '/'
-
-        if self.bookmark.IsBookmark(bmdir):
-            # remove
-            dlg = wx.MessageDialog(self, 'Remove bookmark?',
-                    style = wx.YES_NO|wx.ICON_EXCLAMATION)
-            if dlg.ShowModal() == wx.ID_YES:
-                self.bookmark.DeleteBookmark(bmdir)
-        else:
-            # add
-            dlg = wx.TextEntryDialog(self, bmdir, 'Add bookmark',
-                    bmdir[bmdir.rfind(delimiter)+1:])
-            if dlg.ShowModal() == wx.ID_OK:
-                self.bookmark.AddBookmark((dlg.GetValue(),bmdir))
-
-
-
-    def OnAddressSelect(self, evt):
-        alias = self.bookmark.GetValue()
-        address = self.bookmark.GetAddress(alias)
-
-        if self.GetCurrentPage() == 'Tree':
-            self.ftree.ExpandPath(address)
-        elif self.GetCurrentPage() == 'List':
-            self.flist.LoadURL(address)
-        
-
-
-    def OnAddressEnter(self, evt):
-        if self.bookmark.GetValue() == '':
-            return
-
-        if self.GetCurrentPage() == 'List':
-            self.flist.LoadURL(self.bookmark.GetValue())
+        self.SetCurrentPath(self.dirctrl1.GetPath())
 
 
     def SetCurrentPath(self, path):
-        # write current path on the address bar
-        self.bookmark.SetValue(path)
 
         # set current file and current directory
         if os.path.isfile(path):
@@ -313,15 +173,15 @@ class InnoFileMgr(wx.Panel):
                 page_no = item['page no']
                 break
 
-        if page == 'Tree':
-            self.ftree.ExpandPath(self.currentDir)
+        if page == 'Dir1':
+            self.dirctrl1.ExpandPath(self.currentDir)
         elif page == 'List':
-            self.flist.LoadURL('file:///' + self.currentDir)
+            self.webview.LoadURL('file:///' + self.currentDir)
         elif page == 'View':
             if self.IsViewable(self.currentFile):
-                self.fview.LoadURL('file:///' + self.currentFile)
+                self.viewer.LoadURL('file:///' + self.currentFile)
             else:
-                self.fview.SetPage("<html><body>Hello</body></html>","")
+                self.viewer.SetPage("<html><body>Hello</body></html>","")
 
         self.book.SetSelection(page_no)
 
@@ -372,39 +232,89 @@ if __name__=="__main__":
         def __init__(self, parent, title):
             wx.Frame.__init__(self, parent, title=title)
 
-            # toolbar
-            self.toolbar = wx.ToolBar(self)
-            self.toolbar.Realize()
+            # tool panel
+            self.pnlTool = wx.Panel(self)
+
+            # controls
+            # button bitmaps
+            bmpFTree = peiFTree.GetBitmap()
+            bmpFList = peiFList.GetBitmap()
+            bmpFView = peiFView.GetBitmap()
+            #
+            self.btnFTree = wx.BitmapToggleButton(self.pnlTool, -1, bmpFTree,
+                    (20,20), (bmpFTree.GetWidth()+8, bmpFTree.GetHeight()+8))
+            self.btnFList = wx.BitmapToggleButton(self.pnlTool, -1, bmpFList,
+                    (20,20), (bmpFList.GetWidth()+8, bmpFList.GetHeight()+8))
+            self.btnFView = wx.BitmapToggleButton(self.pnlTool, -1, bmpFView,
+                    (20,20), (bmpFView.GetWidth()+8, bmpFView.GetHeight()+8))
+            self.cboAddr = PriorityCombo(self.pnlTool, size=(-1,28))
+            self.cboAddr.AddItem("\\usr\\sjlee\\blahblah")
+
+            # sizer
+            sizer_x = wx.BoxSizer(wx.HORIZONTAL)
+            sizer_x.Add(self.btnFTree, 0, wx.EXPAND|wx.TOP|wx.LEFT, 4)
+            sizer_x.Add(self.btnFList, 0, wx.EXPAND|wx.TOP|wx.LEFT, 4)
+            sizer_x.Add(self.btnFView, 0, wx.EXPAND|wx.TOP|wx.LEFT, 4)
+            sizer_x.Add(self.cboAddr, 1,
+                    wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.LEFT|wx.RIGHT, 4)
+            self.pnlTool.SetSizer(sizer_x)
 
             # spliter window
             self.spw = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
+            self.spw.SetMinimumPaneSize(200)
 
-            # panel
+            # main panel
             self.pnlFM1 = InnoFileMgr(self.spw)
             self.pnlFM2 = InnoFileMgr(self.spw)
 
-            self.spw.SetMinimumPaneSize(200)
             self.spw.SplitVertically(self.pnlFM1, self.pnlFM2, 0)
+
+            # sizer
+            sizer_y = wx.BoxSizer(wx.HORIZONTAL)
+            sizer_y.Add(self.spw, 1, wx.EXPAND)
 
             # event binding
             self.Bind(wx.EVT_CLOSE, self.OnClose)
-            self.Bind(wx.EVT_CHAR, self.OnChar)
+            self.Bind(wx.EVT_TOGGLEBUTTON, self.OnChangeView, self.btnFTree)
+            self.Bind(wx.EVT_TOGGLEBUTTON, self.OnChangeView, self.btnFList)
+            self.Bind(wx.EVT_TOGGLEBUTTON, self.OnChangeView, self.btnFView)
             self.pnlFM1.Bind(wx.EVT_CHAR_HOOK, self.OnCharFM1)
             self.pnlFM2.Bind(wx.EVT_CHAR_HOOK, self.OnCharFM2)
 
-            # sizer
-            sizer_h = wx.BoxSizer(wx.HORIZONTAL)
-            sizer_h.Add(self.spw, 1, wx.EXPAND)
+            sizer_z = wx.BoxSizer(wx.VERTICAL)
+            sizer_z.Add(self.pnlTool, 0, wx.EXPAND)
+            sizer_z.Add(sizer_y, 1, wx.EXPAND)
 
-            sizer_v = wx.BoxSizer(wx.VERTICAL)
-            sizer_v.Add(self.toolbar, 0, wx.ALL|wx.EXPAND, 4)
-            sizer_v.Add(sizer_h,1, wx.EXPAND)
-
-            self.SetSizer(sizer_v)
+            self.SetSizer(sizer_z)
             self.SetAutoLayout(1)
             #sizer.Fit(self)
             self.SetSize((1200,800))
             self.Show()
+
+        def OnChangeView(self, evt):
+            if evt.GetEventObject() == self.btnFTree:
+                self.btnFList.SetValue(0)
+                self.btnFView.SetValue(0)
+                # change view to Tree mode
+                self.pnlFM1.SetCurrentPage('Dir1')
+                self.pnlFM2.SetCurrentPage('List')
+                self.spw.SetSashPosition(self.spw.GetClientSize()[0] * 0.25)
+
+            elif evt.GetEventObject() == self.btnFList:
+                self.btnFTree.SetValue(0)
+                self.btnFView.SetValue(0)
+                # change view to File List mode
+                self.pnlFM1.SetCurrentPage('List')
+                self.pnlFM2.SetCurrentPage('List')
+                self.spw.SetSashPosition(self.spw.GetClientSize()[0] * 0.5)
+
+            elif evt.GetEventObject() == self.btnFView:
+                self.btnFTree.SetValue(0)
+                self.btnFList.SetValue(0)
+                # change view to File View mode
+                self.pnlFM1.SetCurrentPage('Dir2')
+                self.pnlFM2.SetCurrentPage('View')
+                self.spw.SetSashPosition(self.spw.GetClientSize()[0] * 0.25)
 
         def OnCharFM1(self, evt):
             # space key
@@ -428,8 +338,6 @@ if __name__=="__main__":
             else:
                 evt.Skip()
 
-        def OnChar(self, evt):
-            print(evt.GetKeyCode())
 
         def OnClose(self, evt):
             # destroy self
